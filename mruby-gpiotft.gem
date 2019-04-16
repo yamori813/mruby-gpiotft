@@ -1,0 +1,7 @@
+name: mruby-gpiotft
+description: GpioTft class
+author: Hiroki Mori
+website: https://github.com/yamori813/mruby-gpiotft
+protocol: git
+repository: https://github.com/yamori813/mruby-gpiotft.git
+license: BSD
