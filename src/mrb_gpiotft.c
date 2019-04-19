@@ -17,12 +17,18 @@
 
 #define DONE mrb_gc_arena_restore(mrb, 0);
 
-/* PI0 = 153, PH0 = 125 */
-#define RS (1 << 3)
-#define CD (1 << 19)
-#define RD (1 << 18)
-#define WR (1 << 6)
-/* data = PH7 */
+#define PH0	125
+#define PI0	153
+
+/* ILI9325 PI0 */
+#define RS	(1 << 3)
+#define CD	(1 << 19)
+#define RD	(1 << 18)
+
+/* ILI9325 PH0 */
+#define WR	(1 << 6)
+
+/* ILI9325 data = PH7 - PH14 */
 
 typedef struct {
   gpio_handle_t handle;
@@ -32,7 +38,7 @@ void WriteDone(int fd)
 {
   struct gpio_access_32 gacc32;
 
-  gacc32.first_pin = 125;
+  gacc32.first_pin = PH0;
   gacc32.clear_pins = WR;
   gacc32.change_pins = WR;
   ioctl(fd, GPIOACCESS32, &gacc32);
@@ -42,7 +48,7 @@ void lcdWrite8(int fd, int byte)
 {
   struct gpio_access_32 gacc32;
 
-  gacc32.first_pin = 125;
+  gacc32.first_pin = PH0;
   gacc32.clear_pins = 0xff << 7 | WR;
   gacc32.change_pins = (byte & 0xff)  << 7;
   ioctl(fd, GPIOACCESS32, &gacc32); // set PH
@@ -52,7 +58,7 @@ void lcdWriteRegisterWord(int fd, int addr, int val)
 {
   struct gpio_access_32 gacc32;
   /* addr */
-  gacc32.first_pin = 153;
+  gacc32.first_pin = PI0;
   gacc32.clear_pins = RS | RD;
   gacc32.change_pins = RD;
   ioctl(fd, GPIOACCESS32, &gacc32); // set PI
@@ -65,7 +71,7 @@ void lcdWriteRegisterWord(int fd, int addr, int val)
 
   WriteDone(fd);
 
-  gacc32.first_pin = 153;
+  gacc32.first_pin = PI0;
   gacc32.clear_pins = RS | RD;
   gacc32.change_pins = RS | RD;
   ioctl(fd, GPIOACCESS32, &gacc32); // set PI
@@ -101,14 +107,14 @@ static mrb_value mrb_gpiotft_writereg(mrb_state *mrb, mrb_value self)
 
   mrb_get_args(mrb, "ii", &addr, &val);
 
-  gacc32.first_pin = 153;
+  gacc32.first_pin = PI0;
   gacc32.clear_pins = CD;
   gacc32.change_pins = 0;
   ioctl(data->handle, GPIOACCESS32, &gacc32); // set PI
 
   lcdWriteRegisterWord(data->handle, addr, val);
 
-  gacc32.first_pin = 153;
+  gacc32.first_pin = PI0;
   gacc32.clear_pins = CD;
   gacc32.change_pins = CD;
   ioctl(data->handle, GPIOACCESS32, &gacc32); // set PI
@@ -125,7 +131,7 @@ static mrb_value mrb_gpiotft_setline(mrb_state *mrb, mrb_value self)
   int i, r, g, b;
   struct gpio_access_32 gacc32;
 
-  gacc32.first_pin = 153;
+  gacc32.first_pin = PI0;
   gacc32.clear_pins = CD;
   gacc32.change_pins = 0;
   ioctl(data->handle, GPIOACCESS32, &gacc32); // set PI
@@ -148,7 +154,7 @@ static mrb_value mrb_gpiotft_setline(mrb_state *mrb, mrb_value self)
       lcdWriteRegisterPixel(data->handle, rgb565);
   }
 
-  gacc32.first_pin = 153;
+  gacc32.first_pin = PI0;
   gacc32.clear_pins = CD;
   gacc32.change_pins = CD;
   ioctl(data->handle, GPIOACCESS32, &gacc32); // set PI
