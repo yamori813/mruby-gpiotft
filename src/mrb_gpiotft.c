@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <libgpio.h>
 #include <unistd.h>
+#include <sys/endian.h>
 
 #define DONE mrb_gc_arena_restore(mrb, 0);
 
@@ -162,6 +163,54 @@ static mrb_value mrb_gpiotft_setline(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(0);
 }
 
+static mrb_value mrb_gpiotft_transfer2(mrb_state *mrb, mrb_value self)
+{
+  mrb_bsdgpio_data *data = DATA_PTR(self);
+  mrb_int ptr;
+  int color;
+  int x, y;
+  struct gpio_access_32 gacc32;
+  unsigned char *framedata;
+
+  mrb_get_args(mrb, "i", &ptr);
+
+  framedata = (unsigned char *)ptr;
+
+  gacc32.first_pin = PI0;
+  gacc32.clear_pins = CD;
+  gacc32.change_pins = 0;
+  ioctl(data->handle, GPIOACCESS32, &gacc32); // set PI
+
+  for (y = 319; y >= 0; --y) {
+
+    lcdWriteRegisterWord(data->handle, 0x0020, 0);
+    lcdWriteRegisterWord(data->handle, 0x0021, y);
+    for (x = 0; x < 240; ++x) {
+#if BYTE_ORDER == BIG_ENDIAN
+      color = (*(framedata + 1) >> 3) << 11;
+      color |= (*(framedata + 2) >> 2) << 5;
+      color |= *(framedata + 3) >> 3;
+#else
+      color = (*(framedata + 2) >> 3) << 11;
+      color |= (*(framedata + 1) >> 2) << 5;
+      color |= *(framedata + 0) >> 3;
+#endif
+      framedata += 4;
+      if (x == 0)
+        lcdWriteRegisterWord(data->handle, 0x0022, color);
+      else
+        lcdWriteRegisterPixel(data->handle, color);
+    }
+  }
+
+  gacc32.first_pin = PI0;
+  gacc32.clear_pins = CD;
+  gacc32.change_pins = CD;
+  ioctl(data->handle, GPIOACCESS32, &gacc32); // set PI
+
+  return mrb_fixnum_value(0);
+}
+
 void mrb_mruby_gpiotft_gem_init(mrb_state *mrb)
 {
   struct RClass* bsdgpio = mrb_class_get(mrb, "BsdGpio");
@@ -169,6 +218,7 @@ void mrb_mruby_gpiotft_gem_init(mrb_state *mrb)
   gpiotft = mrb_define_class(mrb, "GpioTft", bsdgpio);
   mrb_define_method(mrb, gpiotft, "writereg", mrb_gpiotft_writereg, MRB_ARGS_REQ(2));
   mrb_define_method(mrb, gpiotft, "setline", mrb_gpiotft_setline, MRB_ARGS_REQ(4));
+  mrb_define_method(mrb, gpiotft, "transfer2", mrb_gpiotft_transfer2, MRB_ARGS_REQ(1));
   DONE;
 }
 

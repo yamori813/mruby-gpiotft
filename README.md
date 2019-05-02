@@ -13,13 +13,23 @@ end
 ```
 ## example
 ```ruby
-p GpioTft.hi
-#=> "hi!!"
-t = GpioTft.new "hello"
-p t.hello
-#=> "hello"
-p t.bye
-#=> "hello bye"
+def lcdCopy(g, c)
+  g.transfer2(c.get_data)
+end
+
+g = GpioTft.new(0)
+lcdInit(g)
+lcdReset(g)
+lcdSetWriteDir(g)
+lcdSetup(g)
+
+c = Cairo.new(240, 320)
+c.set_source_rgb(1 , 0, 0)
+c.move_to(0, 0)
+c.line_to(100, 100)
+c.stroke()
+
+lcdCopy(g, c)
 ```
 
 ## License
