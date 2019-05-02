@@ -14,6 +14,7 @@ end
 ## example
 ```ruby
 g = GpioTft.new(0)
+g.setsize(240, 320)
 g.init
 
 c = Cairo.new(240, 320)
