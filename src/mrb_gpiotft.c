@@ -33,7 +33,34 @@
 
 typedef struct {
   gpio_handle_t handle;
+  int width;
+  int hight;
 } mrb_bsdgpio_data;
+
+static const struct mrb_data_type mrb_bsdgpio_data_type = {
+  "mrb_bsdgpio_data", mrb_free,
+};
+
+static mrb_value mrb_gpiotft_init(mrb_state *mrb, mrb_value self)
+{
+  mrb_bsdgpio_data *data;
+  mrb_int num;
+
+  data = (mrb_bsdgpio_data *)DATA_PTR(self);
+  if (data) {
+    mrb_free(mrb, data);
+  }
+  DATA_TYPE(self) = &mrb_bsdgpio_data_type;
+  DATA_PTR(self) = NULL;
+
+  mrb_get_args(mrb, "i", &num);
+  data = (mrb_bsdgpio_data *)mrb_malloc(mrb, sizeof(mrb_bsdgpio_data));
+  data->handle = gpio_open(num);
+
+  DATA_PTR(self) = data;
+
+  return self;
+}
 
 void WriteDone(int fd)
 {
@@ -98,6 +125,32 @@ lcdWriteRegisterPixel(int fd, int val)
   lcdWrite8(fd, val & 0xff);
 
   WriteDone(fd);
+}
+
+static mrb_value mrb_gpiotft_setsize(mrb_state *mrb, mrb_value self)
+{
+  mrb_bsdgpio_data *data = DATA_PTR(self);
+  mrb_int w, h;
+
+  mrb_get_args(mrb, "ii", &w, &h);
+  data->width = w;
+  data->hight = h;
+
+  return mrb_fixnum_value(0);
+}
+
+static mrb_value mrb_gpiotft_width(mrb_state *mrb, mrb_value self)
+{
+  mrb_bsdgpio_data *data = DATA_PTR(self);
+
+  return mrb_fixnum_value(data->width);
+}
+
+static mrb_value mrb_gpiotft_hight(mrb_state *mrb, mrb_value self)
+{
+  mrb_bsdgpio_data *data = DATA_PTR(self);
+
+  return mrb_fixnum_value(data->hight);
 }
 
 static mrb_value mrb_gpiotft_writereg(mrb_state *mrb, mrb_value self)
@@ -181,11 +234,11 @@ static mrb_value mrb_gpiotft_transfer2(mrb_state *mrb, mrb_value self)
   gacc32.change_pins = 0;
   ioctl(data->handle, GPIOACCESS32, &gacc32); // set PI
 
-  for (y = 319; y >= 0; --y) {
+  for (y = data->hight - 1; y >= 0; --y) {
 
     lcdWriteRegisterWord(data->handle, 0x0020, 0);
     lcdWriteRegisterWord(data->handle, 0x0021, y);
-    for (x = 0; x < 240; ++x) {
+    for (x = 0; x < data->width; ++x) {
 #if BYTE_ORDER == BIG_ENDIAN
       color = (*(framedata + 1) >> 3) << 11;
       color |= (*(framedata + 2) >> 2) << 5;
@@ -216,6 +269,10 @@ void mrb_mruby_gpiotft_gem_init(mrb_state *mrb)
   struct RClass* bsdgpio = mrb_class_get(mrb, "BsdGpio");
   struct RClass *gpiotft;
   gpiotft = mrb_define_class(mrb, "GpioTft", bsdgpio);
+  mrb_define_method(mrb, gpiotft, "initialize", mrb_gpiotft_init, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, gpiotft, "setsize", mrb_gpiotft_setsize, MRB_ARGS_REQ(2));
+  mrb_define_method(mrb, gpiotft, "width", mrb_gpiotft_width, MRB_ARGS_NONE());
+  mrb_define_method(mrb, gpiotft, "hight", mrb_gpiotft_hight, MRB_ARGS_NONE());
   mrb_define_method(mrb, gpiotft, "writereg", mrb_gpiotft_writereg, MRB_ARGS_REQ(2));
   mrb_define_method(mrb, gpiotft, "setline", mrb_gpiotft_setline, MRB_ARGS_REQ(4));
   mrb_define_method(mrb, gpiotft, "transfer2", mrb_gpiotft_transfer2, MRB_ARGS_REQ(1));
