@@ -18,7 +18,7 @@ g.setsize(240, 320)
 g.init
 
 c = Cairo.new(240, 320)
-c.set_source_rgb(1 , 0, 0)
+c.set_source_rgb(1, 0, 0)
 c.move_to(0, 0)
 c.line_to(100, 100)
 c.stroke()
