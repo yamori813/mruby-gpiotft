@@ -13,10 +13,6 @@ end
 ```
 ## example
 ```ruby
-def lcdCopy(g, c)
-  g.transfer2(c.get_data)
-end
-
 g = GpioTft.new(0)
 g.init
 
